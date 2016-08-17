@@ -1,0 +1,114 @@
+<html>
+<head>
+    <title>CanJS Test</title>
+</head>
+<body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.js"></script>
+<script src="https://canjs.com/release/latest/can.jquery.js"></script>
+<script src="https://canjs.com/release/latest/can.map.define.js"></script>
+<script src="https://canjs.com/release/latest/can.list.sort.js"></script>
+<script src="https://canjs.com/release/latest/can.stache.js"></script>
+<script src="https://code.jquery.com/jquery.min.js"></script>
+<script type='text/stache' id='app'>
+        <blog-input/>
+
+</script>
+<style type="text/css">
+.formDiv input, .formDiv textarea, .formDiv button {
+    margin-bottom: 10px;
+}
+.content {
+  margin-top: 10px;
+  border-top: 3px solid black;
+}
+.postDiv button{
+    margin-right: 10px;
+}
+</style>
+
+<script type="text/javascript">
+PostModel = can.Model.extend({
+  findAll: 'GET /posts',
+  create:  'POST /posts'
+},{
+  init: function() {
+    this.attr('likes', 0);
+    this.attr('dislikes', 0);
+  },
+  incrementLike: function() {
+    return this.attr('likes', this.attr('likes')+1);
+  },
+  decrementLike: function() {
+    return this.attr('dislikes', this.attr('dislikes')+1);
+  }
+});
+can.Component.extend({
+  tag: 'blog-posts',
+  template: can.stache("<div class='postDiv'>"+
+                          "<h2>Posts({{posts.length}})</h2>"+
+                          "{{#posts}}"+
+                          "<div class='content'>"+
+                              "<h4>{{title}}</h4>"+
+                              "<p>{{message}}</p>"+
+                            "</div>"+
+                            "<div class='buttonsDiv'>"+
+                               "<button type = 'button' can-click='{incrementLike}'> like ({{likes}})</button>"+
+                               "<button type = 'button' can-click='{decrementLike}'>dislike ({{dislikes}})</button>"+
+                               "<button type = 'button' can-click='{deletePost}'>delete</button>"+
+                            "</div>"+
+                          "{{/posts}}"+
+                        "</div>"),
+   viewModel: {
+        init: function() {
+          console.log();
+        },
+        deletePost: function(post) {
+          post.destroy();
+          var index = this.posts.indexOf(post);
+          this.attr('posts').splice(index, 1);
+        }
+   },
+    
+});
+
+can.Component.extend({
+    tag: 'blog-input',
+    template: can.stache("<div class='formDiv'>"+
+                           "<input type='text' placeholder='give some title here' class='headtitle' {{#if errorTitle}}style='border:1px solid red;'{{/if}}/><br/>"+
+                           "<textarea class='message' placeholder='type your post here..' rows='5' cols='60' {{#if errorContent}}style='border:1px solid red;'{{/if}}/><br/>"+
+                           "<button type='button' class='submit'>Post</button>"+
+                         "</div>"+
+                         "<div>"+
+                           "<blog-posts posts='{postList}'/>"+
+                         "</div>"),
+    viewModel: {
+        postList: new can.List(),
+        errorTitle: false,
+        errorContent: false,
+        init: function() {
+           var post = new PostModel({title:"test", message:"message"});
+           this.postList.push(post);
+        }
+
+    },
+    events: {
+      '.submit click' : function() {
+          var title = $('.headtitle').val();
+          var message = $('.message').val();
+          this.scope.attr('errorTitle', title ? false : true);
+          this.scope.attr('errorContent', message ? false : true);
+          if (this.scope.attr('errorTitle') || this.scope.attr('errorContent')) {
+            return;
+          }
+          var post = new PostModel({title:title, message:message});
+          this.scope.attr('postList').push(post);
+          $('.headtitle').val('');
+          $('.message').val('');
+      }
+    }
+});
+
+    $("body").append(can.view("app", {}));
+</script>
+</body>
+</html>
