@@ -1,0 +1,135 @@
+<html>
+<head>
+    <title>CanJS Timer Clock</title>
+</head>
+<body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.js"></script>
+<script src="https://canjs.com/release/latest/can.jquery.js"></script>
+<script src="https://canjs.com/release/latest/can.map.define.js"></script>
+<script src="https://canjs.com/release/latest/can.list.sort.js"></script>
+<script src="https://canjs.com/release/latest/can.stache.js"></script>
+<script src="https://canjs.com/release/latest/can.fixture.js"></script>
+<script src="https://canjs.com/release/latest/can.construct.proxy.js"></script>
+<script src="https://code.jquery.com/jquery.min.js"></script>
+<script type='text/stache' id='app'>
+        <timer-coundown/>
+</script>
+<style type="text/css">
+button{
+    margin-right: 10px;
+    width: 100px;
+}
+</style>
+<script type="text/javascript">
+var timerID;
+can.Component.extend({
+	tag:'timer-coundown',
+	template: can.stache("<div>"+
+							"{{#unless timerStarted}}"+
+								"<div class='set-time'>"+
+								"<input type='text' can-value='time' class='input-time'/><br/>"+
+								"<p>Alarm?"+ 
+									"<input type='radio' can-value='alarm' value='yes'/> Yes"+
+									"<input type='radio' can-value='alarm' value='no'/> No"+
+								"</p>"+
+								"<button type='button' can-click='{startTimer}'>start</button>"+
+								"</div>"+
+							"{{else}}"+
+								"<div class='runner'>"+
+									"<h1>{{timeString}}</h1><audio/>"+
+									"{{#if timerStarted}}"+
+										"{{#if start}}"+
+											"<button type='button' can-click='{startTimer}'>play</button>"+
+										"{{else}}"+
+											"<button type='button' can-click='{stopTimer}'>pause</button>"+
+										"{{/if}}"+
+										"<button type='button' can-click='{resetTimer}'>reset</button>"+
+									"{{/if}}"+
+								"</div>"+
+							"{{/unless}}"+
+						"</div>"),
+	viewModel: {
+		define: {
+			time: {
+				type: "number",
+				value: 0,
+				set: function(newVal) {
+					if (newVal < 0) {
+						return 0;
+					} else {
+						return newVal;
+					}
+				}
+			}
+		},
+		timeString: '00:00',
+		alarm: 'no',
+		timerStarted: false,
+		start: false,
+
+		startTimer: function  () {
+			if (this.attr('time')) {
+				this.attr('timeString', this.secondsToTime(this.attr('time')));
+				this.attr('timerStarted', true);
+				this.attr('start', false);
+				this.updateTimer();
+			}
+		},
+
+		updateTimer: function() {
+			this.attr('time', this.attr('time') -1);
+			timerID = setTimeout(this.proxy(function(){
+				this.attr('timeString', this.secondsToTime(this.attr('time')));
+				if(this.attr('time') > 0) {
+					this.updateTimer();
+					this.attr('timerStarted', true);
+				} else {
+					this.alarmTone();
+				}
+			}), 1000);
+		},
+
+		secondsToTime: function(totalSeconds) {
+			var hours   = Math.floor(totalSeconds / 3600);
+			var minutes = Math.floor((totalSeconds - (hours * 3600)) / 60);
+			var seconds = totalSeconds - (hours * 3600) - (minutes * 60);
+
+			// round seconds
+			seconds = Math.round(seconds * 100) / 100
+
+			var result = (hours < 10 ? "0" + hours : hours);
+			result += ":" + (minutes < 10 ? "0" + minutes : minutes);
+			result += ":" + (seconds  < 10 ? "0" + seconds : seconds);
+			return result;
+		},
+
+		alarmTone: function() {
+			if(this.attr('alarm') === 'yes') {
+				var audio = $('<audio>')[0];
+				audio.src = './beep.mp3';
+				audio.play().then (this.proxy(function() {
+					this.attr('timerStarted', false);
+				}));
+			} else {
+				this.attr('timerStarted', false);
+			}
+		},
+
+		stopTimer: function() {
+			clearTimeout(timerID);
+			this.attr('start', true);
+		},
+
+		resetTimer: function() {
+			clearTimeout(timerID);
+			this.attr('timerStarted', false);
+			this.attr('time', 0);
+			this.attr('timeString', '00:00');
+			this.attr('start', false);
+		}
+	}
+});
+$("body").append(can.view("app", {}));
+</script>
+</body>
+</html>
