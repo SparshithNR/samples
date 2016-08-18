@@ -8,6 +8,8 @@
 <script src="https://canjs.com/release/latest/can.map.define.js"></script>
 <script src="https://canjs.com/release/latest/can.list.sort.js"></script>
 <script src="https://canjs.com/release/latest/can.stache.js"></script>
+<script src="https://canjs.com/release/latest/can.fixture.js"></script>
+<script src="https://canjs.com/release/latest/can.construct.proxy.js"></script>
 <script src="https://code.jquery.com/jquery.min.js"></script>
 <script type='text/stache' id='app'>
         <blog-input/>
@@ -27,9 +29,17 @@
 </style>
 
 <script type="text/javascript">
+can.fixture('POST /posts', function(request) {
+    return request.data;
+});
+can.fixture('GET /posts', function() {
+    return {data: [{title: "really Liked it", message:"I really liked the framework it is pretty easy to use once you learn it"}]};
+});
+
 PostModel = can.Model.extend({
   findAll: 'GET /posts',
-  create:  'POST /posts'
+  create:  'POST /posts',
+  destroy: 'DELETE /posts'
 },{
   init: function() {
     this.attr('likes', 0);
@@ -86,8 +96,12 @@ can.Component.extend({
         errorTitle: false,
         errorContent: false,
         init: function() {
-           var post = new PostModel({title:"test", message:"message"});
-           this.postList.push(post);
+           PostModel.findAll().then(this.proxy(function(data) {
+             data.each(this.proxy(function(post){
+               var postModel = new PostModel(post);
+               this.postList.push(postModel);
+             }));
+           }));
         }
 
     },
@@ -100,8 +114,10 @@ can.Component.extend({
           if (this.scope.attr('errorTitle') || this.scope.attr('errorContent')) {
             return;
           }
-          var post = new PostModel({title:title, message:message});
-          this.scope.attr('postList').push(post);
+          PostModel.create({title:title, message:message}).then(this.proxy(function(data){
+            var post = new PostModel(data);
+            this.scope.attr('postList').push(post);
+          }));
           $('.headtitle').val('');
           $('.message').val('');
       }
